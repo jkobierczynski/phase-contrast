@@ -20,11 +20,11 @@ It works fully offline. The only thing that needs an internet connection is the 
 
 Yes. There's no server, no pre-rendered images, and no lookup table. The page includes a hand-written radix-2 Cooley–Tukey FFT (about 30 lines of vanilla JavaScript), and every time you move a control it re-runs the real optics calculation on the spot:
 
-1. Forward FFT of the specimen's phase map.
-2. For each illumination angle, shift that spectrum, apply the phase ring's mask (radius, width, X/Y offset, retardation, transmission), and inverse-FFT it.
+1. Forward FFT of the specimen's phase (and, for mirror presets, amplitude) map.
+2. For each illumination angle, shift that spectrum, apply whatever's sitting in the back focal plane — the phase ring's mask (radius, width, X/Y offset, retardation, transmission), a Foucault knife edge, or a Ronchi ruling — and inverse-FFT it.
 3. Sum the resulting intensities across all angles and redraw the four panels.
 
-That whole pipeline runs in roughly 50–100 ms, which is why it feels instant as you drag a slider. Nothing in the visuals — including the flat bright-field panel, or the halo/shadow artifacts you get from detuning the ring — is scripted; it all falls out of the live math.
+That whole pipeline runs in roughly 50–100 ms, which is why it feels instant as you drag a slider. Nothing in the visuals — including the flat bright-field panel, the halo/shadow artifacts you get from detuning the ring, or the shadowgrams and Ronchigrams on the mirror presets — is scripted; it all falls out of the live math.
 
 ## The four panels
 
@@ -35,7 +35,19 @@ That whole pipeline runs in roughly 50–100 ms, which is why it feels instant a
 | 03 | Bright-field image | The image with the ring removed — should render essentially flat, since a pure phase object can't modulate intensity without it |
 | 04 | Phase-contrast image | The image with the ring engaged — the same phase structure, now visible as brightness |
 
-## Worth trying
+## Telescope-mirror test mode
+
+The specimen list also has a second group: **Perfect mirror (null test)**, **Spherical aberration**, **Turned-down edge**, **Zonal error**, **Astigmatism**, and **Coma**. These swap the phase-object map for a mirror's *wavefront error* — how far its surface departs from a true sphere — over a circular clear aperture. Picking one automatically switches to on-axis point illumination and to the **Knife edge** mask, because that's the setup a real test uses.
+
+It's the same optics as the microscope side, just aimed at a different kind of invisible defect, and the Phase Plate group's **Mask type** selector makes that explicit:
+
+- **Zernike ring** — the microscope's phase ring, unchanged.
+- **Knife edge** — the classic Foucault test: block half the returning cone with a hard edge and sweep its **offset** through focus. A perfect mirror stays uniformly grey at every offset; a real defect throws a distinctive shadow (spherical aberration's shadow bends across the disc as you sweep, for instance).
+- **Ronchi ruling** — pass the beam through a ruled grating instead. A perfect mirror shows straight, evenly-spaced bands; any figure error bows or curves them. **Ruling frequency** sets how many bars fit across the aperture.
+
+Panel 04 relabels itself to **Foucault shadowgram** or **Ronchigram** to match, and panel 03 (ring/mask removed) shows the plain lit disc of the aperture — proof that, like a phase object, a wavefront error changes no ray's brightness, only its arrival time.
+
+## Also worth trying
 
 - Switch specimen presets — **Eukaryotic cell** and **Epithelial sheet** are built from an irregular, textured cell model (organic membrane wobble, nucleus, nucleolus, scattered organelles) rather than simple circles, so they read like real phase-contrast micrographs.
 - Drag the phase ring's **radius** or **X/Y offset** away from the condenser annulus (Phase Plate group) and watch panel 04 lose contrast, or pick up an asymmetric shadow — the same fault a centring telescope corrects on a real microscope. **Match ring to condenser** snaps it back into alignment.

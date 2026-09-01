@@ -199,9 +199,9 @@ select:focus-visible{outline:2px solid var(--accent);}
   <main class="viewport">
     <section class="panel">
       <span class="tag">01 &middot; SPECIMEN</span>
-      <h3 style="margin-top:14px;">Optical path map</h3>
+      <h3 style="margin-top:14px;" id="specTitle">Optical path map</h3>
       <div class="screen"><canvas id="cvSpecimen" width="480" height="480" role="img" aria-label="False-colour map of the specimen's optical path length, updating live with the controls below."></canvas></div>
-      <p class="caption">Every point here has the <b>same</b> brightness and absorbs nothing &mdash; color shows only how much the specimen delays the light passing through it, point by point.</p>
+      <p class="caption" id="specCaption">Every point here has the <b>same</b> brightness and absorbs nothing &mdash; color shows only how much the specimen delays the light passing through it, point by point.</p>
     </section>
 
     <section class="panel">
@@ -212,21 +212,21 @@ select:focus-visible{outline:2px solid var(--accent);}
         <span><span class="swatch" style="background:var(--accent);box-shadow:0 0 4px var(--accent);"></span>phase ring</span>
         <span><span class="swatch" style="background:none;border:1px dashed #7c828c;"></span>condenser image</span>
       </div>
-      <p class="caption">The <b>undiffracted beam</b> lands on the ring; light the specimen's structure <b>scattered</b> spreads to other spatial frequencies and passes around it &mdash; that's the bypass.</p>
+      <p class="caption" id="fourierCaption">The <b>undiffracted beam</b> lands on the ring; light the specimen's structure <b>scattered</b> spreads to other spatial frequencies and passes around it &mdash; that's the bypass.</p>
     </section>
 
     <section class="panel">
       <span class="tag">03 &middot; IMAGE PLANE, RING REMOVED</span>
       <h3 style="margin-top:14px;">Ordinary (bright-field) image</h3>
       <div class="screen"><canvas id="cvBright" width="480" height="480" role="img" aria-label="Ordinary bright-field image of the specimen: uniform grey, since a pure phase object is invisible without the phase ring."></canvas><div class="flat-note" id="flatNote">intensity is uniform to within<br>floating-point noise &mdash; nothing to see</div></div>
-      <p class="caption">With the ring out of the path, the scattered light recombines with the direct beam <b>in phase quadrature</b> &mdash; it can't modulate brightness, so the specimen stays invisible.</p>
+      <p class="caption" id="brightCaption">With the ring out of the path, the scattered light recombines with the direct beam <b>in phase quadrature</b> &mdash; it can't modulate brightness, so the specimen stays invisible.</p>
     </section>
 
     <section class="panel">
       <span class="tag">04 &middot; IMAGE PLANE, RING ENGAGED</span>
-      <h3 style="margin-top:14px;">Phase-contrast image</h3>
+      <h3 style="margin-top:14px;" id="phaseTitle">Phase-contrast image</h3>
       <div class="screen"><canvas id="cvPhase" width="480" height="480" role="img" aria-label="Phase-contrast image of the specimen, showing the same structure as visible brightness, updating live with the controls below."></canvas></div>
-      <p class="caption">Shifting and dimming <b>only</b> the beam passing through the ring lets it interfere with the scattered light &mdash; phase delay becomes brightness.</p>
+      <p class="caption" id="phaseCaption">Shifting and dimming <b>only</b> the beam passing through the ring lets it interfere with the scattered light &mdash; phase delay becomes brightness.</p>
     </section>
   </main>
 
@@ -236,15 +236,25 @@ select:focus-visible{outline:2px solid var(--accent);}
       <div class="row">
         <div class="head"><span>Preset</span></div>
         <select id="ctlPreset">
-          <option value="cell">Single cell (simple)</option>
-          <option value="eukaryote">Eukaryotic cell</option>
-          <option value="cluster">Cell cluster (simple)</option>
-          <option value="epithelial">Epithelial sheet</option>
-          <option value="grating">Phase grating</option>
+          <optgroup label="Biological specimen">
+            <option value="cell">Single cell (simple)</option>
+            <option value="eukaryote">Eukaryotic cell</option>
+            <option value="cluster">Cell cluster (simple)</option>
+            <option value="epithelial">Epithelial sheet</option>
+            <option value="grating">Phase grating</option>
+          </optgroup>
+          <optgroup label="Telescope mirror &mdash; wavefront test">
+            <option value="mirror_null">Perfect mirror (null test)</option>
+            <option value="mirror_sph">Spherical aberration</option>
+            <option value="mirror_edge">Turned-down edge</option>
+            <option value="mirror_zone">Zonal error</option>
+            <option value="mirror_astig">Astigmatism</option>
+            <option value="mirror_coma">Coma (off-axis figure)</option>
+          </optgroup>
         </select>
       </div>
       <div class="row">
-        <div class="head"><span>Optical path difference</span><span class="val mono" id="valAmp">&mdash;</span></div>
+        <div class="head"><span id="ampLabel">Optical path difference</span><span class="val mono" id="valAmp">&mdash;</span></div>
         <input type="range" id="ctlAmp" min="0" max="3.0" step="0.02" value="0.9">
       </div>
       <div class="row">
@@ -272,31 +282,58 @@ select:focus-visible{outline:2px solid var(--accent);}
     <div class="group">
       <h4>Phase plate</h4>
       <div class="row">
-        <div class="head"><span>Ring radius</span><span class="val mono" id="valRingR">&mdash;</span></div>
-        <input type="range" id="ctlRingR" min="0" max="36" step="1" value="16">
+        <div class="head"><span>Mask type</span></div>
+        <div class="segmented" id="ctlMaskType">
+          <button data-mask="ring" class="active">Zernike ring</button>
+          <button data-mask="knife">Knife edge</button>
+          <button data-mask="ronchi">Ronchi ruling</button>
+        </div>
       </div>
-      <div class="row">
-        <div class="head"><span>Ring width</span><span class="val mono" id="valRingW">&mdash;</span></div>
-        <input type="range" id="ctlRingW" min="2" max="12" step="1" value="6">
+
+      <div id="maskRingControls">
+        <div class="row">
+          <div class="head"><span>Ring radius</span><span class="val mono" id="valRingR">&mdash;</span></div>
+          <input type="range" id="ctlRingR" min="0" max="36" step="1" value="16">
+        </div>
+        <div class="row">
+          <div class="head"><span>Ring width</span><span class="val mono" id="valRingW">&mdash;</span></div>
+          <input type="range" id="ctlRingW" min="2" max="12" step="1" value="6">
+        </div>
+        <div class="row">
+          <div class="head"><span>Ring offset X</span><span class="val mono" id="valRingOffX">&mdash;</span></div>
+          <input type="range" id="ctlRingOffX" min="-20" max="20" step="1" value="0">
+        </div>
+        <div class="row">
+          <div class="head"><span>Ring offset Y</span><span class="val mono" id="valRingOffY">&mdash;</span></div>
+          <input type="range" id="ctlRingOffY" min="-20" max="20" step="1" value="0">
+        </div>
+        <div class="row">
+          <div class="head"><span>Retardation</span><span class="val mono" id="valRetard">&mdash;</span></div>
+          <input type="range" id="ctlRetard" min="-180" max="180" step="5" value="90">
+        </div>
+        <div class="row">
+          <div class="head"><span>Transmission</span><span class="val mono" id="valTrans">&mdash;</span></div>
+          <input type="range" id="ctlTrans" min="2" max="100" step="1" value="25">
+        </div>
+        <button class="linkbtn" id="btnMatch">Match ring to condenser</button>
+        <p class="caption" style="margin-top:10px;">Radius and offset both have to line up with the condenser image &mdash; a decentred ring, not just a mismatched one, is a common real alignment fault.</p>
       </div>
-      <div class="row">
-        <div class="head"><span>Ring offset X</span><span class="val mono" id="valRingOffX">&mdash;</span></div>
-        <input type="range" id="ctlRingOffX" min="-20" max="20" step="1" value="0">
+
+      <div id="maskKnifeControls" hidden>
+        <div class="row">
+          <div class="head"><span>Edge offset</span><span class="val mono" id="valKnifeOffset">&mdash;</span></div>
+          <input type="range" id="ctlKnifeOffset" min="-12" max="12" step="1" value="0">
+        </div>
+        <div class="row">
+          <div class="head"><span>Edge angle</span><span class="val mono" id="valKnifeAngle">&mdash;</span></div>
+          <input type="range" id="ctlKnifeAngle" min="0" max="180" step="5" value="0">
+        </div>
+        <div class="row" id="ronchiFreqRow" hidden>
+          <div class="head"><span>Ruling frequency</span><span class="val mono" id="valRonchiFreq">&mdash;</span></div>
+          <input type="range" id="ctlRonchiFreq" min="2" max="12" step="1" value="6">
+        </div>
+        <p class="caption" style="margin-top:10px;">This is the Foucault knife-edge test (or its Ronchi-ruling cousin) &mdash; the same Fourier-plane trick as the phase ring, but blocking half the aperture, or a ruled grating, instead of retarding a ring. A perfect mirror looks flat; wavefront errors turn into shading or curved fringes.</p>
       </div>
-      <div class="row">
-        <div class="head"><span>Ring offset Y</span><span class="val mono" id="valRingOffY">&mdash;</span></div>
-        <input type="range" id="ctlRingOffY" min="-20" max="20" step="1" value="0">
-      </div>
-      <div class="row">
-        <div class="head"><span>Retardation</span><span class="val mono" id="valRetard">&mdash;</span></div>
-        <input type="range" id="ctlRetard" min="-180" max="180" step="5" value="90">
-      </div>
-      <div class="row">
-        <div class="head"><span>Transmission</span><span class="val mono" id="valTrans">&mdash;</span></div>
-        <input type="range" id="ctlTrans" min="2" max="100" step="1" value="25">
-      </div>
-      <button class="linkbtn" id="btnMatch">Match ring to condenser</button>
-      <p class="caption" style="margin-top:10px;">Radius and offset both have to line up with the condenser image &mdash; a decentred ring, not just a mismatched one, is a common real alignment fault.</p>
     </div>
 
     <div class="group">
@@ -314,6 +351,7 @@ select:focus-visible{outline:2px solid var(--accent);}
     <span class="eyebrow">Field notes</span>
     <p>A thin, transparent specimen doesn't absorb light &mdash; it slows it down by a fraction of a wavelength wherever it's optically denser. Written as a wave, that's <span class="mono">exp(i&phi;)</span>, which for a weak object is almost exactly <span class="mono">1 + i&phi;</span>: a strong, uniform <b>direct</b> term plus a faint term <b>90&deg; out of phase</b> with it, carrying all of the specimen's structure. Ordinary detectors only see intensity, |amplitude|&sup2;, and a 90&deg; phase offset barely touches that &mdash; which is exactly what panel 03 shows.</p>
     <p>The objective's back focal plane is where this splits apart physically: the direct term converges to a ring matching the condenser annulus, while the structural term &mdash; the specimen's <b>spatial-frequency</b> content &mdash; spreads out across the aperture, mostly missing the ring entirely. A phase ring sitting exactly on that convergence point can retard the direct beam by a further quarter wave and dim it, without touching the light that bypassed it. Now the two terms are back in step enough to interfere, and interference <em>does</em> show up as intensity &mdash; panel 04. Detune the ring &mdash; its radius, or its X/Y offset, in the Phase Plate group &mdash; away from the condenser and watch panel 04 lose contrast as the two stop lining up; this is the same fault a centring telescope is used to correct on a real microscope.</p>
+    <p>Switch the specimen to one of the <b>telescope-mirror</b> presets and the same optics run on a different kind of invisible defect: instead of a specimen's phase delay, the map is a mirror's <b>wavefront error</b> &mdash; how far its surface departs from a true sphere. Swap the phase ring for the <b>Knife edge</b> or <b>Ronchi ruling</b> mask and you get the Foucault and Ronchi tests amateur telescope makers actually use at the eyepiece: block half the returning cone, or pass it through a ruled grating, and spherical aberration, a turned-down edge, a zonal error, astigmatism, or coma each throws a distinctive, recognizable shadow or fringe pattern &mdash; the same Fourier-plane trick, just aimed at a mirror's figure instead of a cell's contents.</p>
   </section>
 
 </div>
@@ -519,14 +557,65 @@ function buildPhase(preset, amp, scale){
   return phase;
 }
 
+// Telescope-mirror wavefront presets: a circular clear aperture (soft edge)
+// carrying a Zernike/Seidel-style figure error instead of a biological phase
+// object. `scale` here stretches the aperture radius, same role it plays for
+// cell size elsewhere. rho is the pupil radius normalized to the aperture.
+function buildMirror(preset, amp, scale){
+  const phase = new Float64Array(N * N);
+  const ampArr = new Float64Array(N * N);
+  const R = 0.36 * scale;
+  for (let y = 0; y < N; y++){
+    for (let x = 0; x < N; x++){
+      const fx = (x - N / 2) / N, fy = (y - N / 2) / N;
+      const r = Math.sqrt(fx * fx + fy * fy);
+      const rho = r / R;
+      const theta = Math.atan2(fy, fx);
+      const edge = 1 / (1 + Math.exp((rho - 1) / 0.012)); // soft-edged clear aperture
+      ampArr[y * N + x] = edge;
+      let w = 0;
+      if (rho <= 1.15){
+        if (preset === "mirror_null"){ w = 0; }
+        else if (preset === "mirror_sph"){ w = amp * 4.0 * (Math.pow(rho, 4) - Math.pow(rho, 2)); }
+        else if (preset === "mirror_edge"){ w = amp * 0.2 * Math.pow(rho, 4) - amp * 1.4 * Math.exp(-Math.pow((rho - 1) / 0.055, 2)); }
+        else if (preset === "mirror_zone"){ w = amp * 1.1 * Math.exp(-Math.pow((rho - 0.55) / 0.07, 2)); }
+        else if (preset === "mirror_astig"){ w = amp * 2.3 * rho * rho * Math.cos(2 * theta); }
+        else if (preset === "mirror_coma"){ w = amp * 2.6 * Math.pow(rho, 3) * Math.cos(theta); }
+      }
+      phase[y * N + x] = w;
+    }
+  }
+  return { phase, amp: ampArr };
+}
+
+// Unified specimen builder: every preset now yields both a phase map and an
+// amplitude (transmission) map. Biological specimens transmit everything
+// (amp &equiv; 1) &mdash; only the mirror presets have a real aperture edge.
+function buildSpecimen(preset, amp, scale){
+  if (preset.indexOf("mirror_") === 0) return buildMirror(preset, amp, scale);
+  const phase = buildPhase(preset, amp, scale);
+  const ampArr = new Float64Array(N * N).fill(1);
+  return { phase, amp: ampArr };
+}
+
 /* =======================================================================
    3. Optics pipeline
    ======================================================================= */
-function computeG0(phase){
+function computeG0(phase, ampArr){
   const re = new Float64Array(N * N), im = new Float64Array(N * N);
-  for (let i = 0; i < N * N; i++){ re[i] = Math.cos(phase[i]); im[i] = Math.sin(phase[i]); }
+  for (let i = 0; i < N * N; i++){ const a = ampArr[i]; re[i] = a * Math.cos(phase[i]); im[i] = a * Math.sin(phase[i]); }
   fft2d(re, im, N, false);
   return { re, im };
+}
+
+// Open-pupil (no mask) image is exactly |specimen field|^2 pointwise for any
+// illumination angle &mdash; the illumination tilt only adds a phase ramp to
+// the reconstructed field, which cancels out of the magnitude. So the
+// bright-field / null-test panel never needs the FFT pipeline at all.
+function computeBrightField(ampArr){
+  const arr = new Float64Array(N * N);
+  for (let i = 0; i < N * N; i++){ const a = ampArr[i]; arr[i] = a * a; }
+  return arr;
 }
 
 function illumAngles(mode, rho, M){
@@ -539,15 +628,37 @@ function illumAngles(mode, rho, M){
   return out;
 }
 
-// Returns { bfp: fftshifted pre-mask intensity sum, image: post-mask (phase-plate) intensity sum }
-// ringOffX/ringOffY let the ring's centre be decentred from the optical axis,
-// same as a mis-seated phase plate in a real objective.
-function computeOptics(G0, angles, ringInner, ringOuter, retardRad, trans, ringOffX, ringOffY){
+// Returns { bfp: fftshifted pre-mask intensity sum, image: post-mask intensity sum }.
+// maskType selects what sits in the back focal plane:
+//   "ring"   &mdash; the Zernike phase ring (retardation + transmission, can be
+//                    decentred by ringOffX/ringOffY, same as a mis-seated
+//                    phase plate in a real objective)
+//   "knife"  &mdash; a Foucault knife edge: a hard half-plane block
+//   "ronchi" &mdash; a Ronchi ruling: a periodic strip block
+// Both knife and ronchi are pure 0/1 amplitude masks &mdash; no retardation or
+// transmission concept, unlike the phase ring.
+function computeOptics(G0, angles, maskType, mp){
   const bfp = new Float64Array(N * N);     // index already fftshifted (0,0 at center)
   const image = new Float64Array(N * N);
-  const c = Math.cos(retardRad), s = Math.sin(retardRad);
   const half = N / 2;
   const Hre = new Float64Array(N * N), Him = new Float64Array(N * N);
+
+  let c, s, trans, ringInner, ringOuter, ringOffX, ringOffY;
+  let knifeCa, knifeSa, knifeOffset;
+  let ronchiCa, ronchiSa, ronchiOffset, ronchiPeriod;
+
+  if (maskType === "ring"){
+    c = Math.cos(mp.retardRad); s = Math.sin(mp.retardRad);
+    trans = mp.trans; ringInner = mp.ringInner; ringOuter = mp.ringOuter;
+    ringOffX = mp.ringOffX; ringOffY = mp.ringOffY;
+  } else if (maskType === "knife"){
+    const ang = mp.angleDeg * Math.PI / 180;
+    knifeCa = Math.cos(ang); knifeSa = Math.sin(ang); knifeOffset = mp.offset;
+  } else {
+    const ang = mp.angleDeg * Math.PI / 180;
+    ronchiCa = Math.cos(ang); ronchiSa = Math.sin(ang); ronchiOffset = mp.offset;
+    ronchiPeriod = 6 / Math.max(0.1, mp.freq);
+  }
 
   for (const a of angles){
     for (let vy = -half; vy < half; vy++){
@@ -561,12 +672,21 @@ function computeOptics(G0, angles, ringInner, ringOuter, retardRad, trans, ringO
         const sxIdx = vx + half, syIdx = vy + half;
         bfp[syIdx * N + sxIdx] += gre * gre + gim * gim;
 
-        const rdx = vx - ringOffX, rdy = vy - ringOffY;
-        const r = Math.sqrt(rdx * rdx + rdy * rdy);
-        if (r >= ringInner && r <= ringOuter){
-          const nre = (gre * c - gim * s) * trans;
-          const nim = (gre * s + gim * c) * trans;
-          gre = nre; gim = nim;
+        if (maskType === "ring"){
+          const rdx = vx - ringOffX, rdy = vy - ringOffY;
+          const r = Math.sqrt(rdx * rdx + rdy * rdy);
+          if (r >= ringInner && r <= ringOuter){
+            const nre = (gre * c - gim * s) * trans;
+            const nim = (gre * s + gim * c) * trans;
+            gre = nre; gim = nim;
+          }
+        } else if (maskType === "knife"){
+          const proj = vx * knifeCa + vy * knifeSa;
+          if (proj < knifeOffset){ gre = 0; gim = 0; }
+        } else {
+          const proj = vx * ronchiCa + vy * ronchiSa - ronchiOffset;
+          const ph = ((proj / ronchiPeriod) % 1 + 1) % 1;
+          if (ph >= 0.5){ gre = 0; gim = 0; }
         }
         Hre[v * N + u] = gre; Him[v * N + u] = gim;
       }
@@ -628,10 +748,15 @@ function blit(canvas, floatToRgb){
   return ctx;
 }
 
-function renderPhase(canvas, phase){
+function renderPhase(canvas, phase, ampArr){
   let m = 1e-6;
-  for (let i = 0; i < N*N; i++) m = Math.max(m, Math.abs(phase[i]));
-  blit(canvas, i => divergingColor(phase[i] / m));
+  for (let i = 0; i < N*N; i++){
+    if (!ampArr || ampArr[i] > 0.5) m = Math.max(m, Math.abs(phase[i]));
+  }
+  blit(canvas, i => {
+    if (ampArr && ampArr[i] < 0.5) return [7, 8, 10]; // outside the clear aperture &mdash; render as black, not a colour
+    return divergingColor(phase[i] / m);
+  });
 }
 
 function renderGray(canvas, arr, forceFlat){
@@ -649,7 +774,7 @@ function renderGray(canvas, arr, forceFlat){
   blit(canvas, i => stopsInterp(GRAY_STOPS, (arr[i]-lo)/range));
 }
 
-function renderFourier(canvas, bfp, gain, ringInner, ringOuter, illumRho, illumMode, ringOffX, ringOffY){
+function renderFourier(canvas, bfp, gain, maskType, mp, illumRho, illumMode){
   let hi = -Infinity;
   const L = new Float64Array(N*N);
   for (let i = 0; i < N*N; i++){ L[i] = Math.log10(bfp[i] + 1e-7); if (L[i]>hi) hi = L[i]; }
@@ -660,7 +785,7 @@ function renderFourier(canvas, bfp, gain, ringInner, ringOuter, illumRho, illumM
     return stopsInterp(SEQ_STOPS, t);
   });
 
-  // overlay: condenser image position + phase-ring band, in canvas pixel space
+  // overlay: condenser image position + mask geometry, in canvas pixel space
   const cx = canvas.width/2, cy = canvas.height/2;
   const scale = canvas.width / N;
   ctx.save();
@@ -677,10 +802,53 @@ function renderFourier(canvas, bfp, gain, ringInner, ringOuter, illumRho, illumM
   ctx.strokeStyle = "rgba(185,142,232,.9)";
   ctx.shadowColor = "rgba(185,142,232,.85)";
   ctx.shadowBlur = 6;
-  ctx.lineWidth = Math.max(1.5, (ringOuter-ringInner)*scale);
-  ctx.beginPath();
-  ctx.arc(cx + ringOffX*scale, cy + ringOffY*scale, ((ringInner+ringOuter)/2)*scale, 0, Math.PI*2);
-  ctx.stroke();
+
+  if (maskType === "ring"){
+    ctx.lineWidth = Math.max(1.5, (mp.ringOuter-mp.ringInner)*scale);
+    ctx.beginPath();
+    ctx.arc(cx + mp.ringOffX*scale, cy + mp.ringOffY*scale, ((mp.ringInner+mp.ringOuter)/2)*scale, 0, Math.PI*2);
+    ctx.stroke();
+  } else if (maskType === "knife"){
+    const ang = mp.angleDeg * Math.PI / 180;
+    const nx = Math.cos(ang), ny = Math.sin(ang);   // points toward the open side
+    const ex = -ny, ey = nx;                          // direction along the edge
+    const px = cx + nx*mp.offset*scale, py = cy + ny*mp.offset*scale;
+    const L2 = Math.max(canvas.width, canvas.height) * 1.5;
+    ctx.save();
+    ctx.beginPath(); ctx.rect(0,0,canvas.width,canvas.height); ctx.clip();
+    ctx.globalAlpha = 0.28; ctx.fillStyle = "#000"; ctx.shadowBlur = 0;
+    ctx.beginPath();
+    ctx.moveTo(px - ex*L2, py - ey*L2);
+    ctx.lineTo(px + ex*L2, py + ey*L2);
+    ctx.lineTo(px + ex*L2 - nx*L2*2, py + ey*L2 - ny*L2*2);
+    ctx.lineTo(px - ex*L2 - nx*L2*2, py - ey*L2 - ny*L2*2);
+    ctx.closePath(); ctx.fill();
+    ctx.restore();
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(px - ex*L2, py - ey*L2);
+    ctx.lineTo(px + ex*L2, py + ey*L2);
+    ctx.stroke();
+  } else {
+    const ang = mp.angleDeg * Math.PI / 180;
+    const nx = Math.cos(ang), ny = Math.sin(ang);
+    const ex = -ny, ey = nx;
+    const period = 6 / Math.max(0.1, mp.freq);
+    const pxPeriod = Math.max(2, period * scale);
+    const L2 = Math.max(canvas.width, canvas.height);
+    const nSteps = Math.ceil(L2 / pxPeriod) + 2;
+    ctx.lineWidth = 1.25;
+    ctx.globalAlpha = 0.75;
+    for (let k = -nSteps; k <= nSteps; k++){
+      const d = k * pxPeriod + mp.offset*scale;
+      const lx = cx + nx*d, ly = cy + ny*d;
+      ctx.beginPath();
+      ctx.moveTo(lx - ex*L2, ly - ey*L2);
+      ctx.lineTo(lx + ex*L2, ly + ey*L2);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
   ctx.restore();
 }
 
@@ -690,39 +858,88 @@ function renderFourier(canvas, bfp, gain, ringInner, ringOuter, illumRho, illumM
 const state = {
   preset: "cell", amp: 0.9, scale: 1.0,
   illumMode: "annular", illumRho: 16,
+  maskType: "ring",
   ringR: 16, ringW: 6, ringOffX: 0, ringOffY: 0, retardDeg: 90, transPct: 25,
+  knifeOffset: 0, knifeAngle: 0, ronchiFreq: 6,
   gain: 1.3
 };
 
 const el = id => document.getElementById(id);
 const cv = { spec: el("cvSpecimen"), four: el("cvFourier"), bright: el("cvBright"), phase: el("cvPhase") };
 
-let cache = { key: "", phase: null, G0: null };
+let cache = { key: "", phase: null, amp: null, G0: null };
 
 function specimenKey(){ return [state.preset, state.amp, state.scale].join("|"); }
 
 function fmtRad(v){ return v.toFixed(2) + " rad (" + (v/(2*Math.PI)).toFixed(2) + " λ)"; }
 function fmtDeg(v){ return v.toFixed(0) + "° (" + (v/360).toFixed(2) + " λ)"; }
 
+function updateLabelsForMode(){
+  const isMirror = state.preset.indexOf("mirror_") === 0;
+  el("specTitle").textContent = isMirror ? "Wavefront error map" : "Optical path map";
+  el("specCaption").innerHTML = isMirror
+    ? "Every point here reflects the <b>same</b> fraction of light &mdash; color shows only how far the mirror's surface departs from a true sphere, point by point."
+    : "Every point here has the <b>same</b> brightness and absorbs nothing &mdash; color shows only how much the specimen delays the light passing through it, point by point.";
+
+  el("fourierCaption").innerHTML = state.maskType === "ring"
+    ? "The <b>undiffracted beam</b> lands on the ring; light the specimen's structure <b>scattered</b> spreads to other spatial frequencies and passes around it &mdash; that's the bypass."
+    : (state.maskType === "knife"
+        ? "The <b>undiffracted beam</b> sits at the centre; the knife edge blocks everything on one side of it, turning that side's wavefront slope into shading."
+        : "The <b>undiffracted beam</b> sits at the centre; the ruling alternately blocks and passes the aperture, turning wavefront slope into fringes.");
+
+  el("brightCaption").innerHTML = isMirror
+    ? "With no mask in the beam, all that's visible is the mirror's illuminated aperture &mdash; a uniformly bright disc. A wavefront error changes no ray's <b>intensity</b>, only its arrival time, so it stays invisible here."
+    : "With the ring out of the path, the scattered light recombines with the direct beam <b>in phase quadrature</b> &mdash; it can't modulate brightness, so the specimen stays invisible.";
+
+  const isShadowTest = state.maskType === "knife" || state.maskType === "ronchi";
+  el("phaseTitle").textContent = isMirror && isShadowTest
+    ? (state.maskType === "knife" ? "Foucault shadowgram" : "Ronchigram")
+    : "Phase-contrast image";
+  el("phaseCaption").innerHTML = isMirror
+    ? "Blocking or shifting <b>only</b> the geometric image of the source lets it interfere with light scattered by the wavefront error &mdash; the error becomes visible shading or fringes."
+    : "Shifting and dimming <b>only</b> the beam passing through the ring lets it interfere with the scattered light &mdash; phase delay becomes brightness.";
+}
+
 function recompute(){
   const key = specimenKey();
   if (key !== cache.key){
-    cache.phase = buildPhase(state.preset, state.amp, state.scale);
-    cache.G0 = computeG0(cache.phase);
+    const built = buildSpecimen(state.preset, state.amp, state.scale);
+    cache.phase = built.phase;
+    cache.amp = built.amp;
+    cache.G0 = computeG0(cache.phase, cache.amp);
     cache.key = key;
   }
   const M = state.illumMode === "point" ? 1 : 48;
   const angles = illumAngles(state.illumMode, state.illumRho, M);
-  const retardRad = state.retardDeg * Math.PI / 180;
-  const trans = state.transPct / 100;
-  const ringInner = Math.max(0, state.ringR - state.ringW/2);
-  const ringOuter = state.ringR + state.ringW/2;
 
-  const { bfp, image } = computeOptics(cache.G0, angles, ringInner, ringOuter, retardRad, trans, state.ringOffX, state.ringOffY);
+  let mp;
+  if (state.maskType === "ring"){
+    mp = {
+      retardRad: state.retardDeg * Math.PI / 180,
+      trans: state.transPct / 100,
+      ringInner: Math.max(0, state.ringR - state.ringW/2),
+      ringOuter: state.ringR + state.ringW/2,
+      ringOffX: state.ringOffX, ringOffY: state.ringOffY
+    };
+  } else if (state.maskType === "knife"){
+    mp = { offset: state.knifeOffset, angleDeg: state.knifeAngle };
+  } else {
+    mp = { offset: state.knifeOffset, angleDeg: state.knifeAngle, freq: state.ronchiFreq };
+  }
 
-  renderPhase(cv.spec, cache.phase);
-  renderFourier(cv.four, bfp, state.gain, ringInner, ringOuter, state.illumRho, state.illumMode, state.ringOffX, state.ringOffY);
-  renderGray(cv.bright, null, true);
+  const { bfp, image } = computeOptics(cache.G0, angles, state.maskType, mp);
+
+  renderPhase(cv.spec, cache.phase, cache.amp);
+  renderFourier(cv.four, bfp, state.gain, state.maskType, mp, state.illumRho, state.illumMode);
+
+  const isMirror = state.preset.indexOf("mirror_") === 0;
+  if (isMirror){
+    renderGray(cv.bright, computeBrightField(cache.amp), false);
+    el("flatNote").classList.remove("show");
+  } else {
+    renderGray(cv.bright, null, true);
+    el("flatNote").classList.add("show");
+  }
   renderGray(cv.phase, image, false);
 }
 
@@ -752,16 +969,42 @@ bindRange("ctlRingOffX", v => state.ringOffX = v, () => el("valRingOffX").textCo
 bindRange("ctlRingOffY", v => state.ringOffY = v, () => el("valRingOffY").textContent = state.ringOffY.toFixed(0));
 bindRange("ctlRetard", v => state.retardDeg = v, () => el("valRetard").textContent = fmtDeg(state.retardDeg));
 bindRange("ctlTrans", v => state.transPct = v, () => el("valTrans").textContent = state.transPct.toFixed(0) + "%");
+bindRange("ctlKnifeOffset", v => state.knifeOffset = v, () => el("valKnifeOffset").textContent = state.knifeOffset.toFixed(0));
+bindRange("ctlKnifeAngle", v => state.knifeAngle = v, () => el("valKnifeAngle").textContent = state.knifeAngle.toFixed(0) + "°");
+bindRange("ctlRonchiFreq", v => state.ronchiFreq = v, () => el("valRonchiFreq").textContent = state.ronchiFreq.toFixed(0) + " cyc");
 bindRange("ctlGain", v => state.gain = v, () => el("valGain").textContent = state.gain.toFixed(2) + "×");
 
 el("ctlPreset").addEventListener("change", e => {
+  const prevPreset = state.preset;
   state.preset = e.target.value;
   const isGrating = state.preset === "grating";
-  el("scaleLabel").textContent = isGrating ? "Grating frequency" : "Cell size";
-  el("ctlScale").min = isGrating ? "0" : "0.5";
-  el("ctlScale").max = isGrating ? "1" : "1.8";
-  if (isGrating && state.scale > 1) { state.scale = 0.6; el("ctlScale").value = "0.6"; }
+  const isMirror = state.preset.indexOf("mirror_") === 0;
+  const wasMirror = prevPreset.indexOf("mirror_") === 0;
+
+  el("ampLabel").textContent = isMirror ? "Wavefront error (P&ndash;V)" : "Optical path difference";
+  el("scaleLabel").textContent = isMirror ? "Aperture size" : (isGrating ? "Grating frequency" : "Cell size");
+
+  if (isMirror){
+    el("ctlScale").min = "0.6"; el("ctlScale").max = "1.15";
+    if (state.scale < 0.6 || state.scale > 1.15){ state.scale = 1.0; el("ctlScale").value = "1.0"; }
+  } else if (isGrating){
+    el("ctlScale").min = "0"; el("ctlScale").max = "1";
+    if (state.scale > 1) { state.scale = 0.6; el("ctlScale").value = "0.6"; }
+  } else {
+    el("ctlScale").min = "0.5"; el("ctlScale").max = "1.8";
+    if (state.scale < 0.5) { state.scale = 1.0; el("ctlScale").value = "1.0"; }
+  }
   el("valScale").textContent = isGrating ? "" : state.scale.toFixed(2) + "×";
+
+  if (isMirror && !wasMirror){
+    applyIllumMode("point");
+    applyMaskType("knife");
+  } else if (!isMirror && wasMirror){
+    applyIllumMode("annular");
+    applyMaskType("ring");
+  }
+
+  updateLabelsForMode();
   scheduleRecompute();
 });
 
@@ -785,13 +1028,32 @@ function syncRingToCondenser(){
   el("valRingOffY").textContent = "0";
 }
 
+function applyIllumMode(mode){
+  state.illumMode = mode;
+  document.querySelectorAll("#ctlIllumMode button").forEach(b => b.classList.toggle("active", b.dataset.mode === mode));
+  el("ctlRho").disabled = mode === "point";
+  syncRingToCondenser();
+}
+
+function applyMaskType(type){
+  state.maskType = type;
+  document.querySelectorAll("#ctlMaskType button").forEach(b => b.classList.toggle("active", b.dataset.mask === type));
+  el("maskRingControls").hidden = type !== "ring";
+  el("maskKnifeControls").hidden = type === "ring";
+  el("ronchiFreqRow").hidden = type !== "ronchi";
+}
+
 document.querySelectorAll("#ctlIllumMode button").forEach(btn => {
   btn.addEventListener("click", () => {
-    document.querySelectorAll("#ctlIllumMode button").forEach(b => b.classList.remove("active"));
-    btn.classList.add("active");
-    state.illumMode = btn.dataset.mode;
-    el("ctlRho").disabled = state.illumMode === "point";
-    syncRingToCondenser();
+    applyIllumMode(btn.dataset.mode);
+    scheduleRecompute();
+  });
+});
+
+document.querySelectorAll("#ctlMaskType button").forEach(btn => {
+  btn.addEventListener("click", () => {
+    applyMaskType(btn.dataset.mask);
+    updateLabelsForMode();
     scheduleRecompute();
   });
 });
@@ -811,8 +1073,12 @@ el("valRingOffX").textContent = state.ringOffX.toFixed(0);
 el("valRingOffY").textContent = state.ringOffY.toFixed(0);
 el("valRetard").textContent = fmtDeg(state.retardDeg);
 el("valTrans").textContent = state.transPct.toFixed(0) + "%";
+el("valKnifeOffset").textContent = state.knifeOffset.toFixed(0);
+el("valKnifeAngle").textContent = state.knifeAngle.toFixed(0) + "°";
+el("valRonchiFreq").textContent = state.ronchiFreq.toFixed(0) + " cyc";
 el("valGain").textContent = state.gain.toFixed(2) + "×";
 el("flatNote").classList.add("show");
+updateLabelsForMode();
 
 recompute();
 
