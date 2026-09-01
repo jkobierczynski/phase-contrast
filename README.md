@@ -43,7 +43,7 @@ It's the same optics as the microscope side, just aimed at a different kind of i
 
 - **Zernike ring** — the microscope's phase ring, unchanged.
 - **Knife edge** — the classic Foucault test: block half the returning cone with a hard edge and sweep its **offset** through focus. A perfect mirror stays uniformly grey at every offset; a real defect throws a distinctive shadow (spherical aberration's shadow bends across the disc as you sweep, for instance).
-- **Ronchi ruling** — pass the beam through a ruled grating instead. A perfect mirror shows straight, evenly-spaced bands; any figure error bows or curves them. **Ruling frequency** sets how many bars fit across the aperture.
+- **Ronchi ruling** — pass the beam through a ruled grating instead, deliberately held off best focus with **Ruling defocus**. That's not optional: at exact focus every point of a perfect mirror converges to the same spot, so a ruling there could only flip the whole image on or off, never show bands. Racking it off focus spreads the converging cone out so different points on the mirror land on different ruling lines. A perfect mirror then shows straight, evenly-spaced bands; any figure error bows or curves them. **Ruling frequency** sets how many bars fit across the aperture.
 
 Panel 04 relabels itself to **Foucault shadowgram** or **Ronchigram** to match, and panel 03 (ring/mask removed) shows the plain lit disc of the aperture — proof that, like a phase object, a wavefront error changes no ray's brightness, only its arrival time.
 

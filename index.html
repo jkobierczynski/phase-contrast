@@ -330,9 +330,13 @@ select:focus-visible{outline:2px solid var(--accent);}
         </div>
         <div class="row" id="ronchiFreqRow" hidden>
           <div class="head"><span>Ruling frequency</span><span class="val mono" id="valRonchiFreq">&mdash;</span></div>
-          <input type="range" id="ctlRonchiFreq" min="2" max="12" step="1" value="6">
+          <input type="range" id="ctlRonchiFreq" min="2" max="14" step="1" value="6">
         </div>
-        <p class="caption" style="margin-top:10px;">This is the Foucault knife-edge test (or its Ronchi-ruling cousin) &mdash; the same Fourier-plane trick as the phase ring, but blocking half the aperture, or a ruled grating, instead of retarding a ring. A perfect mirror looks flat; wavefront errors turn into shading or curved fringes.</p>
+        <div class="row" id="ronchiDefocusRow" hidden>
+          <div class="head"><span>Ruling defocus</span><span class="val mono" id="valRonchiDefocus">&mdash;</span></div>
+          <input type="range" id="ctlRonchiDefocus" min="0" max="24" step="1" value="10">
+        </div>
+        <p class="caption" style="margin-top:10px;" id="knifeCaption">This is the Foucault knife-edge test &mdash; the same Fourier-plane trick as the phase ring, but blocking half the aperture instead of retarding a ring. A perfect mirror looks flat at every offset; wavefront errors turn into shading.</p>
       </div>
     </div>
 
@@ -598,6 +602,35 @@ function buildSpecimen(preset, amp, scale){
   return { phase, amp: ampArr };
 }
 
+// A real Ronchi test is never done at exact focus &mdash; at exact focus every
+// point of a perfect mirror converges to one point, so the ruling could only
+// switch the whole image on or off, never show bands. Testers always rack the
+// ruling slightly inside or outside of focus; that defocus is what spreads
+// the converging cone out so different points on the mirror land on
+// different ruling lines, producing the bowed bands that reveal the figure.
+// This adds that defocus &mdash; a plain quadratic wavefront term &mdash; on top
+// of whatever the specimen's own phase map is, purely for the Ronchi
+// calculation; it never appears in the displayed wavefront-error map itself.
+function computeDefocusPhase(scale, isMirror, amt){
+  const arr = new Float64Array(N * N);
+  if (amt === 0) return arr;
+  const R = isMirror ? 0.36 * scale : 0.5;
+  for (let y = 0; y < N; y++){
+    for (let x = 0; x < N; x++){
+      const fx = (x - N / 2) / N, fy = (y - N / 2) / N;
+      const r = Math.sqrt(fx * fx + fy * fy);
+      const rho = r / R;
+      arr[y * N + x] = amt * rho * rho;
+    }
+  }
+  return arr;
+}
+function addPhase(a, b){
+  const out = new Float64Array(a.length);
+  for (let i = 0; i < a.length; i++) out[i] = a[i] + b[i];
+  return out;
+}
+
 /* =======================================================================
    3. Optics pipeline
    ======================================================================= */
@@ -657,7 +690,10 @@ function computeOptics(G0, angles, maskType, mp){
   } else {
     const ang = mp.angleDeg * Math.PI / 180;
     ronchiCa = Math.cos(ang); ronchiSa = Math.sin(ang); ronchiOffset = mp.offset;
-    ronchiPeriod = 6 / Math.max(0.1, mp.freq);
+    // A coarse ruling: only a handful of periods span the whole back focal
+    // plane, matching a real Ronchi grating (fine enough to alias into
+    // spurious diffraction-order duplicates of the whole pupil otherwise).
+    ronchiPeriod = N / (2 * Math.max(1, mp.freq));
   }
 
   for (const a of angles){
@@ -833,7 +869,7 @@ function renderFourier(canvas, bfp, gain, maskType, mp, illumRho, illumMode){
     const ang = mp.angleDeg * Math.PI / 180;
     const nx = Math.cos(ang), ny = Math.sin(ang);
     const ex = -ny, ey = nx;
-    const period = 6 / Math.max(0.1, mp.freq);
+    const period = N / (2 * Math.max(1, mp.freq));
     const pxPeriod = Math.max(2, period * scale);
     const L2 = Math.max(canvas.width, canvas.height);
     const nSteps = Math.ceil(L2 / pxPeriod) + 2;
@@ -860,14 +896,14 @@ const state = {
   illumMode: "annular", illumRho: 16,
   maskType: "ring",
   ringR: 16, ringW: 6, ringOffX: 0, ringOffY: 0, retardDeg: 90, transPct: 25,
-  knifeOffset: 0, knifeAngle: 0, ronchiFreq: 6,
+  knifeOffset: 0, knifeAngle: 0, ronchiFreq: 6, ronchiDefocus: 10,
   gain: 1.3
 };
 
 const el = id => document.getElementById(id);
 const cv = { spec: el("cvSpecimen"), four: el("cvFourier"), bright: el("cvBright"), phase: el("cvPhase") };
 
-let cache = { key: "", phase: null, amp: null, G0: null };
+let cache = { key: "", phase: null, amp: null, G0: null, ronchiKey: "", ronchiG0: null };
 
 function specimenKey(){ return [state.preset, state.amp, state.scale].join("|"); }
 
@@ -885,7 +921,11 @@ function updateLabelsForMode(){
     ? "The <b>undiffracted beam</b> lands on the ring; light the specimen's structure <b>scattered</b> spreads to other spatial frequencies and passes around it &mdash; that's the bypass."
     : (state.maskType === "knife"
         ? "The <b>undiffracted beam</b> sits at the centre; the knife edge blocks everything on one side of it, turning that side's wavefront slope into shading."
-        : "The <b>undiffracted beam</b> sits at the centre; the ruling alternately blocks and passes the aperture, turning wavefront slope into fringes.");
+        : "The ruling is deliberately racked off best focus &mdash; that spreads the converging beam out so it alternately blocks and passes the aperture, turning wavefront slope into bowed bands.");
+
+  el("knifeCaption").innerHTML = state.maskType === "knife"
+    ? "This is the Foucault knife-edge test &mdash; the same Fourier-plane trick as the phase ring, but blocking half the aperture instead of retarding a ring. A perfect mirror looks flat at every offset; wavefront errors turn into shading."
+    : "This is the Ronchi test &mdash; a ruled grating instead of a knife edge, deliberately held off best focus (<b>Ruling defocus</b>) so the converging beam spreads across several ruling lines. A perfect mirror shows straight, evenly-spaced bands; wavefront errors bow or curve them.";
 
   el("brightCaption").innerHTML = isMirror
     ? "With no mask in the beam, all that's visible is the mirror's illuminated aperture &mdash; a uniformly bright disc. A wavefront error changes no ray's <b>intensity</b>, only its arrival time, so it stays invisible here."
@@ -912,7 +952,7 @@ function recompute(){
   const M = state.illumMode === "point" ? 1 : 48;
   const angles = illumAngles(state.illumMode, state.illumRho, M);
 
-  let mp;
+  let mp, opticsG0 = cache.G0;
   if (state.maskType === "ring"){
     mp = {
       retardRad: state.retardDeg * Math.PI / 180,
@@ -925,9 +965,20 @@ function recompute(){
     mp = { offset: state.knifeOffset, angleDeg: state.knifeAngle };
   } else {
     mp = { offset: state.knifeOffset, angleDeg: state.knifeAngle, freq: state.ronchiFreq };
+    // The Ronchi ruling only shows real bands when it's deliberately off best
+    // focus (see computeDefocusPhase above) &mdash; that defocus never touches
+    // the displayed wavefront map, so it gets its own cached field.
+    const isMirror = state.preset.indexOf("mirror_") === 0;
+    const ronchiKey = key + "|" + state.ronchiDefocus;
+    if (ronchiKey !== cache.ronchiKey){
+      const defocused = addPhase(cache.phase, computeDefocusPhase(state.scale, isMirror, state.ronchiDefocus));
+      cache.ronchiG0 = computeG0(defocused, cache.amp);
+      cache.ronchiKey = ronchiKey;
+    }
+    opticsG0 = cache.ronchiG0;
   }
 
-  const { bfp, image } = computeOptics(cache.G0, angles, state.maskType, mp);
+  const { bfp, image } = computeOptics(opticsG0, angles, state.maskType, mp);
 
   renderPhase(cv.spec, cache.phase, cache.amp);
   renderFourier(cv.four, bfp, state.gain, state.maskType, mp, state.illumRho, state.illumMode);
@@ -972,6 +1023,7 @@ bindRange("ctlTrans", v => state.transPct = v, () => el("valTrans").textContent 
 bindRange("ctlKnifeOffset", v => state.knifeOffset = v, () => el("valKnifeOffset").textContent = state.knifeOffset.toFixed(0));
 bindRange("ctlKnifeAngle", v => state.knifeAngle = v, () => el("valKnifeAngle").textContent = state.knifeAngle.toFixed(0) + "°");
 bindRange("ctlRonchiFreq", v => state.ronchiFreq = v, () => el("valRonchiFreq").textContent = state.ronchiFreq.toFixed(0) + " cyc");
+bindRange("ctlRonchiDefocus", v => state.ronchiDefocus = v, () => el("valRonchiDefocus").textContent = state.ronchiDefocus.toFixed(0));
 bindRange("ctlGain", v => state.gain = v, () => el("valGain").textContent = state.gain.toFixed(2) + "×");
 
 el("ctlPreset").addEventListener("change", e => {
@@ -1041,6 +1093,7 @@ function applyMaskType(type){
   el("maskRingControls").hidden = type !== "ring";
   el("maskKnifeControls").hidden = type === "ring";
   el("ronchiFreqRow").hidden = type !== "ronchi";
+  el("ronchiDefocusRow").hidden = type !== "ronchi";
 }
 
 document.querySelectorAll("#ctlIllumMode button").forEach(btn => {
@@ -1076,6 +1129,7 @@ el("valTrans").textContent = state.transPct.toFixed(0) + "%";
 el("valKnifeOffset").textContent = state.knifeOffset.toFixed(0);
 el("valKnifeAngle").textContent = state.knifeAngle.toFixed(0) + "°";
 el("valRonchiFreq").textContent = state.ronchiFreq.toFixed(0) + " cyc";
+el("valRonchiDefocus").textContent = state.ronchiDefocus.toFixed(0);
 el("valGain").textContent = state.gain.toFixed(2) + "×";
 el("flatNote").classList.add("show");
 updateLabelsForMode();
