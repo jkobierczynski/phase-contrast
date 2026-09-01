@@ -1,0 +1,820 @@
+<title>Phase Contrast Bench</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=Source+Sans+3:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+:root{
+  color-scheme: dark;
+  --bg-page:#101216;
+  --bg-panel:#191c21;
+  --bg-panel-2:#14171b;
+  --bg-screen:#07080a;
+  --ink-primary:#f2efe4;
+  --ink-secondary:#9ba0a8;
+  --ink-muted:#5d6169;
+  --accent:#b98ee8;
+  --accent-soft:rgba(185,142,232,.14);
+  --accent-line:rgba(185,142,232,.62);
+  --hairline:rgba(242,239,228,.09);
+  --hairline-strong:rgba(242,239,228,.17);
+}
+*{box-sizing:border-box;}
+body{
+  background:var(--bg-page);
+  color:var(--ink-primary);
+  font-family:"Source Sans 3",system-ui,-apple-system,sans-serif;
+}
+.mono{font-family:"IBM Plex Mono",ui-monospace,"SF Mono",Consolas,monospace;}
+.console{max-width:1440px;margin:0 auto;padding:34px 20px 60px;}
+
+/* ---------- header ---------- */
+.titleplate{
+  display:flex;flex-direction:column;gap:8px;
+  padding-bottom:18px;border-bottom:1px solid var(--hairline-strong);
+  margin-bottom:26px;
+}
+.titleplate .eyebrow{
+  font-family:"IBM Plex Mono",ui-monospace,"SF Mono",Consolas,monospace;font-size:11px;letter-spacing:.16em;
+  color:var(--accent);text-transform:uppercase;
+}
+.titleplate h1{
+  font-family:"Archivo",system-ui,-apple-system,"Segoe UI",sans-serif;font-weight:800;text-transform:uppercase;
+  letter-spacing:.03em;font-size:clamp(24px,4vw,34px);margin:0;
+  text-wrap:balance;
+}
+.titleplate p{
+  margin:2px 0 0;color:var(--ink-secondary);font-size:14.5px;
+  max-width:62ch;line-height:1.55;
+}
+
+/* ---------- bench layout: instrument panels + control console side by side ---------- */
+.bench-layout{
+  display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px;
+  align-items:start;margin-bottom:22px;
+}
+@media (max-width:980px){ .bench-layout{grid-template-columns:1fr;} }
+
+.viewport{
+  display:grid;grid-template-columns:1fr 1fr;gap:14px;
+}
+@media (max-width:520px){ .viewport{grid-template-columns:1fr;} }
+
+.panel{
+  background:var(--bg-panel);border:1px solid var(--hairline-strong);
+  border-radius:5px;padding:14px 14px 15px;position:relative;
+  display:flex;flex-direction:column;gap:9px;
+}
+.panel .tag{
+  font-family:"IBM Plex Mono",ui-monospace,"SF Mono",Consolas,monospace;font-size:10px;letter-spacing:.1em;
+  color:var(--ink-muted);
+}
+.panel h3{
+  font-family:"Archivo",system-ui,-apple-system,"Segoe UI",sans-serif;font-weight:700;text-transform:uppercase;
+  letter-spacing:.05em;font-size:12.5px;margin:0;color:var(--ink-primary);
+}
+.screen{
+  background:var(--bg-screen);border-radius:3px;aspect-ratio:1/1;
+  position:relative;overflow:hidden;
+  box-shadow:inset 0 0 0 1px rgba(0,0,0,.7), inset 0 3px 14px rgba(0,0,0,.55);
+}
+.screen canvas{width:100%;height:100%;display:block;}
+.screen .flat-note{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-family:"IBM Plex Mono",ui-monospace,"SF Mono",Consolas,monospace;font-size:11.5px;color:var(--ink-secondary);
+  letter-spacing:.04em;text-align:center;padding:0 18%;pointer-events:none;opacity:0;
+  transition:opacity .2s;
+}
+.screen .flat-note.show{opacity:1;}
+.panel .caption{
+  font-size:12.5px;line-height:1.5;color:var(--ink-secondary);margin:0;
+}
+.panel .caption b{color:var(--ink-primary);font-weight:600;}
+.legend-row{display:flex;gap:14px;font-family:"IBM Plex Mono",ui-monospace,"SF Mono",Consolas,monospace;font-size:10.5px;color:var(--ink-muted);}
+.legend-row span{display:inline-flex;align-items:center;gap:5px;}
+.swatch{width:9px;height:9px;border-radius:50%;display:inline-block;}
+
+/* ---------- controls: a single stacked column, sitting beside the panels ---------- */
+.console-controls{
+  background:var(--bg-panel-2);border:1px solid var(--hairline-strong);
+  border-radius:5px;padding:20px 22px 8px;
+  display:flex;flex-direction:column;
+}
+/* once the bench stacks (panels above, controls below) there's a full row of
+   width to use again, so the groups go back to sitting side by side */
+@media (max-width:980px){
+  .console-controls{display:grid;grid-template-columns:repeat(4,1fr);gap:22px 26px;}
+  .group{border-top:none !important;padding-top:0 !important;margin-top:0 !important;}
+}
+@media (max-width:820px){ .console-controls{grid-template-columns:1fr 1fr;} }
+@media (max-width:520px){ .console-controls{grid-template-columns:1fr;} }
+
+.group h4{
+  font-family:"Archivo",system-ui,-apple-system,"Segoe UI",sans-serif;font-weight:700;text-transform:uppercase;
+  letter-spacing:.09em;font-size:11px;color:var(--accent);
+  margin:0 0 14px;padding-bottom:8px;border-bottom:1px solid var(--hairline);
+}
+.group{padding-bottom:16px;}
+.group:not(:first-child){border-top:1px solid var(--hairline);padding-top:16px;margin-top:2px;}
+.row{margin-bottom:14px;}
+.row:last-child{margin-bottom:0;}
+.row .head{
+  display:flex;justify-content:space-between;align-items:baseline;gap:8px;
+  font-size:12.5px;color:var(--ink-secondary);margin-bottom:6px;
+}
+.row .head .val{
+  font-family:"IBM Plex Mono",ui-monospace,"SF Mono",Consolas,monospace;font-size:11.5px;color:var(--ink-primary);
+  font-variant-numeric:tabular-nums;white-space:nowrap;
+}
+input[type=range]{
+  -webkit-appearance:none;appearance:none;width:100%;height:16px;background:transparent;
+  cursor:pointer;
+}
+input[type=range]::-webkit-slider-runnable-track{
+  height:3px;background:var(--hairline-strong);border-radius:2px;
+}
+input[type=range]::-moz-range-track{
+  height:3px;background:var(--hairline-strong);border-radius:2px;
+}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:13px;height:13px;border-radius:50%;
+  background:var(--accent);border:2px solid #0d0e10;margin-top:-5px;
+  box-shadow:0 0 0 3px var(--accent-soft);
+}
+input[type=range]::-moz-range-thumb{
+  width:13px;height:13px;border-radius:50%;background:var(--accent);
+  border:2px solid #0d0e10;box-shadow:0 0 0 3px var(--accent-soft);
+}
+input[type=range]:disabled{opacity:.35;cursor:not-allowed;}
+input[type=range]:focus-visible::-webkit-slider-thumb{outline:2px solid var(--ink-primary);outline-offset:2px;}
+
+select{
+  width:100%;background:var(--bg-panel);color:var(--ink-primary);
+  border:1px solid var(--hairline-strong);border-radius:4px;padding:7px 9px;
+  font-family:"Source Sans 3",system-ui,-apple-system,sans-serif;font-size:13px;
+}
+select:focus-visible{outline:2px solid var(--accent);}
+
+.segmented{display:flex;border:1px solid var(--hairline-strong);border-radius:4px;overflow:hidden;}
+.segmented button{
+  flex:1;background:var(--bg-panel);color:var(--ink-secondary);border:none;
+  padding:7px 8px;font-family:"Source Sans 3",system-ui,-apple-system,sans-serif;font-size:12.5px;cursor:pointer;
+  border-right:1px solid var(--hairline-strong);
+}
+.segmented button:last-child{border-right:none;}
+.segmented button.active{background:var(--accent-soft);color:var(--ink-primary);font-weight:600;}
+.segmented button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px;}
+
+.linkbtn{
+  background:transparent;color:var(--accent);border:1px solid var(--accent-line);
+  border-radius:4px;padding:6px 10px;font-family:"Source Sans 3",system-ui,-apple-system,sans-serif;font-size:12px;
+  cursor:pointer;width:100%;margin-top:2px;
+}
+.linkbtn:hover{background:var(--accent-soft);}
+
+/* ---------- field notes ---------- */
+.fieldnotes{
+  margin-top:20px;border:1px dashed var(--hairline-strong);border-radius:5px;
+  padding:18px 20px 20px;
+}
+.fieldnotes .eyebrow{
+  font-family:"IBM Plex Mono",ui-monospace,"SF Mono",Consolas,monospace;font-size:10.5px;letter-spacing:.14em;
+  color:var(--accent);text-transform:uppercase;margin-bottom:9px;display:block;
+}
+.fieldnotes p{
+  font-size:13.5px;line-height:1.68;color:var(--ink-secondary);margin:0 0 11px;
+  max-width:78ch;
+}
+.fieldnotes p:last-child{margin-bottom:0;}
+.fieldnotes b{color:var(--ink-primary);font-weight:600;}
+</style>
+
+<div class="console">
+
+  <header class="titleplate">
+    <span class="eyebrow">Fourier optics &mdash; interactive demonstration</span>
+    <h1>Phase Contrast Bench</h1>
+    <p>A phase object bends no light and absorbs none &mdash; it only delays it, so it is invisible to an ordinary lens. Adjust the specimen and the ring below and watch where the delayed light actually goes in the back focal plane, and why intercepting it there is what makes it visible.</p>
+  </header>
+
+  <div class="bench-layout">
+  <main class="viewport">
+    <section class="panel">
+      <span class="tag">01 &middot; SPECIMEN</span>
+      <h3 style="margin-top:14px;">Optical path map</h3>
+      <div class="screen"><canvas id="cvSpecimen" width="480" height="480" role="img" aria-label="False-colour map of the specimen's optical path length, updating live with the controls below."></canvas></div>
+      <p class="caption">Every point here has the <b>same</b> brightness and absorbs nothing &mdash; color shows only how much the specimen delays the light passing through it, point by point.</p>
+    </section>
+
+    <section class="panel">
+      <span class="tag">02 &middot; OBJECTIVE BACK FOCAL PLANE</span>
+      <h3 style="margin-top:14px;">Diffraction pattern &amp; phase ring</h3>
+      <div class="screen"><canvas id="cvFourier" width="480" height="480" role="img" aria-label="Diffraction pattern in the objective back focal plane, with the phase ring overlaid, updating live with the controls below."></canvas></div>
+      <div class="legend-row">
+        <span><span class="swatch" style="background:var(--accent);box-shadow:0 0 4px var(--accent);"></span>phase ring</span>
+        <span><span class="swatch" style="background:none;border:1px dashed #7c828c;"></span>condenser image</span>
+      </div>
+      <p class="caption">The <b>undiffracted beam</b> lands on the ring; light the specimen's structure <b>scattered</b> spreads to other spatial frequencies and passes around it &mdash; that's the bypass.</p>
+    </section>
+
+    <section class="panel">
+      <span class="tag">03 &middot; IMAGE PLANE, RING REMOVED</span>
+      <h3 style="margin-top:14px;">Ordinary (bright-field) image</h3>
+      <div class="screen"><canvas id="cvBright" width="480" height="480" role="img" aria-label="Ordinary bright-field image of the specimen: uniform grey, since a pure phase object is invisible without the phase ring."></canvas><div class="flat-note" id="flatNote">intensity is uniform to within<br>floating-point noise &mdash; nothing to see</div></div>
+      <p class="caption">With the ring out of the path, the scattered light recombines with the direct beam <b>in phase quadrature</b> &mdash; it can't modulate brightness, so the specimen stays invisible.</p>
+    </section>
+
+    <section class="panel">
+      <span class="tag">04 &middot; IMAGE PLANE, RING ENGAGED</span>
+      <h3 style="margin-top:14px;">Phase-contrast image</h3>
+      <div class="screen"><canvas id="cvPhase" width="480" height="480" role="img" aria-label="Phase-contrast image of the specimen, showing the same structure as visible brightness, updating live with the controls below."></canvas></div>
+      <p class="caption">Shifting and dimming <b>only</b> the beam passing through the ring lets it interfere with the scattered light &mdash; phase delay becomes brightness.</p>
+    </section>
+  </main>
+
+  <section class="console-controls">
+    <div class="group">
+      <h4>Specimen</h4>
+      <div class="row">
+        <div class="head"><span>Preset</span></div>
+        <select id="ctlPreset">
+          <option value="cell">Single cell (simple)</option>
+          <option value="eukaryote">Eukaryotic cell</option>
+          <option value="cluster">Cell cluster (simple)</option>
+          <option value="epithelial">Epithelial sheet</option>
+          <option value="grating">Phase grating</option>
+        </select>
+      </div>
+      <div class="row">
+        <div class="head"><span>Optical path difference</span><span class="val mono" id="valAmp">&mdash;</span></div>
+        <input type="range" id="ctlAmp" min="0" max="3.0" step="0.02" value="0.9">
+      </div>
+      <div class="row">
+        <div class="head"><span id="scaleLabel">Feature size</span><span class="val mono" id="valScale">&mdash;</span></div>
+        <input type="range" id="ctlScale" min="0.5" max="1.8" step="0.02" value="1.0">
+      </div>
+    </div>
+
+    <div class="group">
+      <h4>Condenser</h4>
+      <div class="row">
+        <div class="head"><span>Illumination</span></div>
+        <div class="segmented" id="ctlIllumMode">
+          <button data-mode="point">On-axis point</button>
+          <button data-mode="annular" class="active">Annular</button>
+        </div>
+      </div>
+      <div class="row">
+        <div class="head"><span>Annulus radius</span><span class="val mono" id="valRho">&mdash;</span></div>
+        <input type="range" id="ctlRho" min="6" max="34" step="1" value="16">
+      </div>
+      <p class="caption" style="margin-top:2px;">Sets where the undiffracted beam converges in the back focal plane &mdash; in cycles per field width.</p>
+    </div>
+
+    <div class="group">
+      <h4>Phase plate</h4>
+      <div class="row">
+        <div class="head"><span>Ring radius</span><span class="val mono" id="valRingR">&mdash;</span></div>
+        <input type="range" id="ctlRingR" min="0" max="36" step="1" value="16">
+      </div>
+      <div class="row">
+        <div class="head"><span>Ring width</span><span class="val mono" id="valRingW">&mdash;</span></div>
+        <input type="range" id="ctlRingW" min="2" max="12" step="1" value="6">
+      </div>
+      <div class="row">
+        <div class="head"><span>Ring offset X</span><span class="val mono" id="valRingOffX">&mdash;</span></div>
+        <input type="range" id="ctlRingOffX" min="-20" max="20" step="1" value="0">
+      </div>
+      <div class="row">
+        <div class="head"><span>Ring offset Y</span><span class="val mono" id="valRingOffY">&mdash;</span></div>
+        <input type="range" id="ctlRingOffY" min="-20" max="20" step="1" value="0">
+      </div>
+      <div class="row">
+        <div class="head"><span>Retardation</span><span class="val mono" id="valRetard">&mdash;</span></div>
+        <input type="range" id="ctlRetard" min="-180" max="180" step="5" value="90">
+      </div>
+      <div class="row">
+        <div class="head"><span>Transmission</span><span class="val mono" id="valTrans">&mdash;</span></div>
+        <input type="range" id="ctlTrans" min="2" max="100" step="1" value="25">
+      </div>
+      <button class="linkbtn" id="btnMatch">Match ring to condenser</button>
+      <p class="caption" style="margin-top:10px;">Radius and offset both have to line up with the condenser image &mdash; a decentred ring, not just a mismatched one, is a common real alignment fault.</p>
+    </div>
+
+    <div class="group">
+      <h4>Display</h4>
+      <div class="row">
+        <div class="head"><span>Diffraction pattern gain</span><span class="val mono" id="valGain">&mdash;</span></div>
+        <input type="range" id="ctlGain" min="0.5" max="3" step="0.05" value="1.3">
+      </div>
+      <p class="caption" style="margin-top:2px;">The undiffracted beam can be a billion times brighter than the scattered light. This log-compresses the readout so both are visible at once &mdash; it has no effect on the images.</p>
+    </div>
+  </section>
+  </div>
+
+  <section class="fieldnotes">
+    <span class="eyebrow">Field notes</span>
+    <p>A thin, transparent specimen doesn't absorb light &mdash; it slows it down by a fraction of a wavelength wherever it's optically denser. Written as a wave, that's <span class="mono">exp(i&phi;)</span>, which for a weak object is almost exactly <span class="mono">1 + i&phi;</span>: a strong, uniform <b>direct</b> term plus a faint term <b>90&deg; out of phase</b> with it, carrying all of the specimen's structure. Ordinary detectors only see intensity, |amplitude|&sup2;, and a 90&deg; phase offset barely touches that &mdash; which is exactly what panel 03 shows.</p>
+    <p>The objective's back focal plane is where this splits apart physically: the direct term converges to a ring matching the condenser annulus, while the structural term &mdash; the specimen's <b>spatial-frequency</b> content &mdash; spreads out across the aperture, mostly missing the ring entirely. A phase ring sitting exactly on that convergence point can retard the direct beam by a further quarter wave and dim it, without touching the light that bypassed it. Now the two terms are back in step enough to interfere, and interference <em>does</em> show up as intensity &mdash; panel 04. Detune the ring &mdash; its radius, or its X/Y offset, in the Phase Plate group &mdash; away from the condenser and watch panel 04 lose contrast as the two stop lining up; this is the same fault a centring telescope is used to correct on a real microscope.</p>
+  </section>
+
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* =======================================================================
+   1. FFT  &mdash;  iterative radix-2 Cooley&ndash;Tukey, separable 2D
+   ======================================================================= */
+function fft1d(re, im, invert){
+  const n = re.length;
+  for (let i = 1, j = 0; i < n; i++){
+    let bit = n >> 1;
+    for (; j & bit; bit >>= 1) j ^= bit;
+    j ^= bit;
+    if (i < j){
+      let t = re[i]; re[i] = re[j]; re[j] = t;
+      t = im[i]; im[i] = im[j]; im[j] = t;
+    }
+  }
+  for (let len = 2; len <= n; len <<= 1){
+    const ang = (2 * Math.PI / len) * (invert ? 1 : -1);
+    const wr = Math.cos(ang), wi = Math.sin(ang);
+    const half = len >> 1;
+    for (let i = 0; i < n; i += len){
+      let curWr = 1, curWi = 0;
+      for (let k = 0; k < half; k++){
+        const uRe = re[i + k], uIm = im[i + k];
+        const tRe = re[i + k + half] * curWr - im[i + k + half] * curWi;
+        const tIm = re[i + k + half] * curWi + im[i + k + half] * curWr;
+        re[i + k] = uRe + tRe; im[i + k] = uIm + tIm;
+        re[i + k + half] = uRe - tRe; im[i + k + half] = uIm - tIm;
+        const nWr = curWr * wr - curWi * wi;
+        const nWi = curWr * wi + curWi * wr;
+        curWr = nWr; curWi = nWi;
+      }
+    }
+  }
+  if (invert) for (let i = 0; i < n; i++){ re[i] /= n; im[i] /= n; }
+}
+
+function fft2d(reGrid, imGrid, N, invert){
+  const rowRe = new Float64Array(N), rowIm = new Float64Array(N);
+  for (let y = 0; y < N; y++){
+    const off = y * N;
+    for (let x = 0; x < N; x++){ rowRe[x] = reGrid[off + x]; rowIm[x] = imGrid[off + x]; }
+    fft1d(rowRe, rowIm, invert);
+    for (let x = 0; x < N; x++){ reGrid[off + x] = rowRe[x]; imGrid[off + x] = rowIm[x]; }
+  }
+  const colRe = new Float64Array(N), colIm = new Float64Array(N);
+  for (let x = 0; x < N; x++){
+    for (let y = 0; y < N; y++){ colRe[y] = reGrid[y * N + x]; colIm[y] = imGrid[y * N + x]; }
+    fft1d(colRe, colIm, invert);
+    for (let y = 0; y < N; y++){ reGrid[y * N + x] = colRe[y]; imGrid[y * N + x] = colIm[y]; }
+  }
+}
+
+function wrapIdx(N, x, y){ return ((y % N + N) % N) * N + ((x % N + N) % N); }
+
+/* =======================================================================
+   2. Specimen presets  &mdash;  optical-path-length maps phi(x,y)
+   ======================================================================= */
+const N = 128;
+
+// ---- deterministic organic-boundary + granularity helpers, for the
+// realistic cell presets. Everything here is a pure function of position
+// and a per-cell "seed", so recompute is stable and nothing needs Math.random.
+function cellWobble(theta, seed, ampMain){
+  return 1 + ampMain * (
+    0.10 * Math.cos(3 * theta + seed) +
+    0.06 * Math.cos(5 * theta + seed * 1.7) +
+    0.05 * Math.cos(2 * theta + seed * 0.6)
+  );
+}
+function hash2(ix, iy, seed){
+  let h = (ix * 374761393 + iy * 668265263 + seed * 2246822519) | 0;
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  h = h ^ (h >>> 16);
+  return ((h >>> 0) % 100000) / 100000;
+}
+function valueNoise(x, y, seed){
+  const x0 = Math.floor(x), y0 = Math.floor(y);
+  const fx = x - x0, fy = y - y0;
+  const v00 = hash2(x0, y0, seed), v10 = hash2(x0 + 1, y0, seed);
+  const v01 = hash2(x0, y0 + 1, seed), v11 = hash2(x0 + 1, y0 + 1, seed);
+  const sx = fx * fx * (3 - 2 * fx), sy = fy * fy * (3 - 2 * fy);
+  const a = v00 + (v10 - v00) * sx, b = v01 + (v11 - v01) * sx;
+  return a + (b - a) * sy;
+}
+function cellTexture(dx, dy, seed){
+  const s = 13;
+  let t = 0;
+  t += valueNoise(dx * s, dy * s, seed) * 0.62;
+  t += valueNoise(dx * s * 2.4 + 11, dy * s * 2.4 + 11, seed + 17) * 0.38;
+  return (t - 0.5) * 2;
+}
+
+// Adds one realistic eukaryotic cell (irregular membrane, off-centre
+// nucleus + nucleolus, scattered organelles, mottled cytoplasm) into an
+// existing phase array. cell = {cx, cy, rad, na, seed}.
+function addEukaryoticCell(phase, amp, scale, cell){
+  const { cx, cy, rad, na, seed } = cell;
+  const nucAng = 0.6 + seed * 0.3;
+  const nucCx = Math.cos(nucAng) * rad * 0.30, nucCy = Math.sin(nucAng) * rad * 0.30;
+  const K = 7;
+  const organelles = [];
+  for (let k = 0; k < K; k++){
+    const ang = k * 2.399963 + seed * 2.1;
+    const rr = rad * 0.30 * Math.sqrt((k + 0.6) / K) + rad * 0.30;
+    organelles.push({ ox: Math.cos(ang) * rr, oy: Math.sin(ang) * rr, s: rad * (0.045 + 0.02 * ((k * 37) % 5) / 5) });
+  }
+  for (let y = 0; y < N; y++){
+    for (let x = 0; x < N; x++){
+      const fx = (x - N / 2) / N, fy = (y - N / 2) / N;
+      const dx = (fx - cx) / scale, dy = (fy - cy) / scale;
+      const r = Math.sqrt(dx * dx + dy * dy);
+      const theta = Math.atan2(dy, dx);
+      const localRad = rad * cellWobble(theta, seed, 1.0);
+
+      let p = 0;
+      const bodyEnv = Math.exp(-(r * r) / (2 * Math.pow(localRad * 0.62, 2)));
+      p += amp * na * 0.85 * bodyEnv;
+      p += amp * na * 0.55 * Math.exp(-Math.pow(r - localRad, 2) / (2 * Math.pow(localRad * 0.11, 2)));
+      p += amp * na * 0.11 * cellTexture(dx, dy, seed) * bodyEnv;
+
+      const ndx = dx - nucCx, ndy = dy - nucCy;
+      const nr = Math.sqrt(ndx * ndx + ndy * ndy);
+      const ntheta = Math.atan2(ndy, ndx);
+      const nucRad = rad * 0.44 * cellWobble(ntheta, seed * 1.3 + 2, 0.6);
+      const nucEnv = Math.exp(-(nr * nr) / (2 * Math.pow(nucRad * 0.62, 2)));
+      p += amp * na * 0.55 * nucEnv;
+      p += amp * na * 0.35 * Math.exp(-Math.pow(nr - nucRad, 2) / (2 * Math.pow(nucRad * 0.16, 2)));
+      const nlx = ndx - nucRad * 0.25, nly = ndy + nucRad * 0.15;
+      const nlr2 = nlx * nlx + nly * nly;
+      p += amp * na * 0.75 * Math.exp(-nlr2 / (2 * Math.pow(nucRad * 0.16, 2)));
+
+      for (const o of organelles){
+        const odx = dx - o.ox, ody = dy - o.oy;
+        const or2 = odx * odx + ody * ody;
+        p += amp * na * 0.28 * bodyEnv * Math.exp(-or2 / (2 * o.s * o.s));
+      }
+      phase[y * N + x] += p;
+    }
+  }
+}
+
+function buildPhase(preset, amp, scale){
+  const phase = new Float64Array(N * N);
+  if (preset === "grating"){
+    const cycles = Math.max(2, Math.round(4 + scale * 10));
+    for (let y = 0; y < N; y++){
+      const fy = (y - N / 2) / N;
+      const envY = Math.exp(-Math.pow(fy / 0.36, 8));
+      for (let x = 0; x < N; x++){
+        const fx = x / N;
+        const envX = Math.exp(-Math.pow((x - N / 2) / (N * 0.4), 8));
+        const p = amp * 0.5 * Math.sin(2 * Math.PI * cycles * fx);
+        phase[y * N + x] = p * envX * envY;
+      }
+    }
+  } else if (preset === "eukaryote"){
+    addEukaryoticCell(phase, amp, scale, { cx: 0, cy: 0, rad: 0.30, na: 1.0, seed: 0.7 });
+  } else if (preset === "epithelial"){
+    const cells = [
+      { cx: -0.20, cy: -0.16, rad: 0.155, na: 0.95, seed: 0.3 },
+      { cx:  0.06, cy: -0.23, rad: 0.145, na: 1.08, seed: 1.9 },
+      { cx:  0.28, cy: -0.10, rad: 0.150, na: 0.90, seed: 3.4 },
+      { cx: -0.27, cy:  0.14, rad: 0.150, na: 1.05, seed: 5.1 },
+      { cx:  0.00, cy:  0.10, rad: 0.165, na: 1.00, seed: 6.6 },
+      { cx:  0.26, cy:  0.21, rad: 0.140, na: 0.92, seed: 8.0 },
+      { cx: -0.02, cy: -0.02, rad: 0.130, na: 1.12, seed: 9.5 }
+    ];
+    for (const c of cells) addEukaryoticCell(phase, amp, scale, c);
+  } else {
+    const cells = preset === "cluster"
+      ? [ { cx: -0.13, cy: -0.08, r: 0.155, na: 1.00 },
+          { cx:  0.16, cy:  0.11, r: 0.115, na: 0.82 },
+          { cx:  0.02, cy: -0.20, r: 0.095, na: 1.12 } ]
+      : [ { cx: 0, cy: 0, r: 0.20, na: 1.00 } ];
+    for (let y = 0; y < N; y++){
+      for (let x = 0; x < N; x++){
+        const fx = (x - N / 2) / N, fy = (y - N / 2) / N;
+        let p = 0;
+        for (const c of cells){
+          const dx = (fx - c.cx) / scale, dy = (fy - c.cy) / scale;
+          const r = Math.sqrt(dx * dx + dy * dy);
+          const rad = c.r;
+          // cell body: broad low-frequency blob
+          p += amp * c.na * Math.exp(-(r * r) / (2 * (rad * 0.6) * (rad * 0.6)));
+          // membrane: thin rim at the cell boundary
+          p += amp * c.na * 0.55 * Math.exp(-Math.pow(r - rad, 2) / (2 * (rad * 0.13) * (rad * 0.13)));
+          // nucleus: a smaller blob offset from the cell centre
+          const ndx = dx - rad * 0.32, ndy = dy + rad * 0.28;
+          const nr = Math.sqrt(ndx * ndx + ndy * ndy);
+          p += amp * c.na * 0.8 * Math.exp(-(nr * nr) / (2 * (rad * 0.30) * (rad * 0.30)));
+        }
+        phase[y * N + x] = p;
+      }
+    }
+  }
+  return phase;
+}
+
+/* =======================================================================
+   3. Optics pipeline
+   ======================================================================= */
+function computeG0(phase){
+  const re = new Float64Array(N * N), im = new Float64Array(N * N);
+  for (let i = 0; i < N * N; i++){ re[i] = Math.cos(phase[i]); im[i] = Math.sin(phase[i]); }
+  fft2d(re, im, N, false);
+  return { re, im };
+}
+
+function illumAngles(mode, rho, M){
+  if (mode === "point") return [ { sx: 0, sy: 0 } ];
+  const out = [];
+  for (let m = 0; m < M; m++){
+    const th = (2 * Math.PI * m) / M;
+    out.push({ sx: Math.round(rho * Math.cos(th)), sy: Math.round(rho * Math.sin(th)) });
+  }
+  return out;
+}
+
+// Returns { bfp: fftshifted pre-mask intensity sum, image: post-mask (phase-plate) intensity sum }
+// ringOffX/ringOffY let the ring's centre be decentred from the optical axis,
+// same as a mis-seated phase plate in a real objective.
+function computeOptics(G0, angles, ringInner, ringOuter, retardRad, trans, ringOffX, ringOffY){
+  const bfp = new Float64Array(N * N);     // index already fftshifted (0,0 at center)
+  const image = new Float64Array(N * N);
+  const c = Math.cos(retardRad), s = Math.sin(retardRad);
+  const half = N / 2;
+  const Hre = new Float64Array(N * N), Him = new Float64Array(N * N);
+
+  for (const a of angles){
+    for (let vy = -half; vy < half; vy++){
+      const v = (vy + N) % N;
+      for (let vx = -half; vx < half; vx++){
+        const u = (vx + N) % N;
+        const gidx = wrapIdx(N, vx - a.sx, vy - a.sy);
+        let gre = G0.re[gidx], gim = G0.im[gidx];
+
+        // back-focal-plane readout (pre-mask), stored fftshifted for direct display
+        const sxIdx = vx + half, syIdx = vy + half;
+        bfp[syIdx * N + sxIdx] += gre * gre + gim * gim;
+
+        const rdx = vx - ringOffX, rdy = vy - ringOffY;
+        const r = Math.sqrt(rdx * rdx + rdy * rdy);
+        if (r >= ringInner && r <= ringOuter){
+          const nre = (gre * c - gim * s) * trans;
+          const nim = (gre * s + gim * c) * trans;
+          gre = nre; gim = nim;
+        }
+        Hre[v * N + u] = gre; Him[v * N + u] = gim;
+      }
+    }
+    fft2d(Hre, Him, N, true);
+    for (let i = 0; i < N * N; i++) image[i] += Hre[i] * Hre[i] + Him[i] * Him[i];
+  }
+  const M = angles.length;
+  for (let i = 0; i < N * N; i++){ bfp[i] /= M; image[i] /= M; }
+  return { bfp, image };
+}
+
+/* =======================================================================
+   4. Colour ramps  (validated diverging / sequential stops)
+   ======================================================================= */
+function hx(h){ return [parseInt(h.slice(1,3),16), parseInt(h.slice(3,5),16), parseInt(h.slice(5,7),16)]; }
+function lerpC(a, b, t){ return [a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t, a[2]+(b[2]-a[2])*t]; }
+function clamp01(t){ return t < 0 ? 0 : t > 1 ? 1 : t; }
+
+const DIV_NEG = hx("#3987e5"), DIV_MID = hx("#383835"), DIV_POS = hx("#e66767");
+function divergingColor(t){
+  t = t < -1 ? -1 : t > 1 ? 1 : t;
+  return t < 0 ? lerpC(DIV_MID, DIV_NEG, -t) : lerpC(DIV_MID, DIV_POS, t);
+}
+
+function stopsInterp(stops, t){
+  t = clamp01(t);
+  const n = stops.length - 1;
+  const seg = t * n;
+  const i = Math.min(Math.floor(seg), n - 1);
+  return lerpC(stops[i], stops[i + 1], seg - i);
+}
+const SEQ_STOPS = [
+  hx("#07080a"), hx("#0d366b"), hx("#184f95"), hx("#256abf"),
+  hx("#3987e5"), hx("#6da7ec"), hx("#9ec5f4"), hx("#cde2fb"), hx("#eaf3fd")
+];
+const GRAY_STOPS = [ hx("#07080a"), hx("#4a4d51"), hx("#9ba0a8"), hx("#f2efe4") ];
+
+/* =======================================================================
+   5. Canvas rendering
+   ======================================================================= */
+const off = document.createElement("canvas"); off.width = N; off.height = N;
+const offCtx = off.getContext("2d");
+const offImg = offCtx.createImageData(N, N);
+
+function blit(canvas, floatToRgb){
+  const d = offImg.data;
+  for (let i = 0; i < N * N; i++){
+    const [r,g,b] = floatToRgb(i);
+    const j = i * 4;
+    d[j] = r; d[j+1] = g; d[j+2] = b; d[j+3] = 255;
+  }
+  offCtx.putImageData(offImg, 0, 0);
+  const ctx = canvas.getContext("2d");
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(off, 0, 0, canvas.width, canvas.height);
+  return ctx;
+}
+
+function renderPhase(canvas, phase){
+  let m = 1e-6;
+  for (let i = 0; i < N*N; i++) m = Math.max(m, Math.abs(phase[i]));
+  blit(canvas, i => divergingColor(phase[i] / m));
+}
+
+function renderGray(canvas, arr, forceFlat){
+  if (forceFlat){
+    const ctx = canvas.getContext("2d");
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    const c = stopsInterp(GRAY_STOPS, 0.22);
+    ctx.fillStyle = `rgb(${c[0]|0},${c[1]|0},${c[2]|0})`;
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+    return;
+  }
+  let lo = Infinity, hi = -Infinity;
+  for (let i = 0; i < N*N; i++){ if (arr[i]<lo) lo=arr[i]; if (arr[i]>hi) hi=arr[i]; }
+  const range = Math.max(hi - lo, 1e-9);
+  blit(canvas, i => stopsInterp(GRAY_STOPS, (arr[i]-lo)/range));
+}
+
+function renderFourier(canvas, bfp, gain, ringInner, ringOuter, illumRho, illumMode, ringOffX, ringOffY){
+  let hi = -Infinity;
+  const L = new Float64Array(N*N);
+  for (let i = 0; i < N*N; i++){ L[i] = Math.log10(bfp[i] + 1e-7); if (L[i]>hi) hi = L[i]; }
+  const window = 8.5 / gain;
+  const lo = hi - window;
+  const ctx = blit(canvas, i => {
+    const t = (L[i]-lo)/(hi-lo);
+    return stopsInterp(SEQ_STOPS, t);
+  });
+
+  // overlay: condenser image position + phase-ring band, in canvas pixel space
+  const cx = canvas.width/2, cy = canvas.height/2;
+  const scale = canvas.width / N;
+  ctx.save();
+  ctx.lineWidth = 1.5;
+  ctx.strokeStyle = "rgba(155,160,168,.55)";
+  ctx.setLineDash([3,4]);
+  if (illumMode === "point"){
+    ctx.beginPath(); ctx.moveTo(cx-7,cy); ctx.lineTo(cx+7,cy);
+    ctx.moveTo(cx,cy-7); ctx.lineTo(cx,cy+7); ctx.stroke();
+  } else {
+    ctx.beginPath(); ctx.arc(cx, cy, illumRho*scale, 0, Math.PI*2); ctx.stroke();
+  }
+  ctx.setLineDash([]);
+  ctx.strokeStyle = "rgba(185,142,232,.9)";
+  ctx.shadowColor = "rgba(185,142,232,.85)";
+  ctx.shadowBlur = 6;
+  ctx.lineWidth = Math.max(1.5, (ringOuter-ringInner)*scale);
+  ctx.beginPath();
+  ctx.arc(cx + ringOffX*scale, cy + ringOffY*scale, ((ringInner+ringOuter)/2)*scale, 0, Math.PI*2);
+  ctx.stroke();
+  ctx.restore();
+}
+
+/* =======================================================================
+   6. State, control wiring, scheduling
+   ======================================================================= */
+const state = {
+  preset: "cell", amp: 0.9, scale: 1.0,
+  illumMode: "annular", illumRho: 16,
+  ringR: 16, ringW: 6, ringOffX: 0, ringOffY: 0, retardDeg: 90, transPct: 25,
+  gain: 1.3
+};
+
+const el = id => document.getElementById(id);
+const cv = { spec: el("cvSpecimen"), four: el("cvFourier"), bright: el("cvBright"), phase: el("cvPhase") };
+
+let cache = { key: "", phase: null, G0: null };
+
+function specimenKey(){ return [state.preset, state.amp, state.scale].join("|"); }
+
+function fmtRad(v){ return v.toFixed(2) + " rad (" + (v/(2*Math.PI)).toFixed(2) + " λ)"; }
+function fmtDeg(v){ return v.toFixed(0) + "° (" + (v/360).toFixed(2) + " λ)"; }
+
+function recompute(){
+  const key = specimenKey();
+  if (key !== cache.key){
+    cache.phase = buildPhase(state.preset, state.amp, state.scale);
+    cache.G0 = computeG0(cache.phase);
+    cache.key = key;
+  }
+  const M = state.illumMode === "point" ? 1 : 48;
+  const angles = illumAngles(state.illumMode, state.illumRho, M);
+  const retardRad = state.retardDeg * Math.PI / 180;
+  const trans = state.transPct / 100;
+  const ringInner = Math.max(0, state.ringR - state.ringW/2);
+  const ringOuter = state.ringR + state.ringW/2;
+
+  const { bfp, image } = computeOptics(cache.G0, angles, ringInner, ringOuter, retardRad, trans, state.ringOffX, state.ringOffY);
+
+  renderPhase(cv.spec, cache.phase);
+  renderFourier(cv.four, bfp, state.gain, ringInner, ringOuter, state.illumRho, state.illumMode, state.ringOffX, state.ringOffY);
+  renderGray(cv.bright, null, true);
+  renderGray(cv.phase, image, false);
+}
+
+let scheduled = false;
+function scheduleRecompute(){
+  if (scheduled) return;
+  scheduled = true;
+  requestAnimationFrame(() => { scheduled = false; recompute(); });
+}
+
+/* ---- wire up controls ---- */
+function bindRange(id, onChange, fmt){
+  const input = el(id);
+  input.addEventListener("input", () => {
+    onChange(parseFloat(input.value));
+    if (fmt) fmt();
+    scheduleRecompute();
+  });
+}
+
+bindRange("ctlAmp", v => state.amp = v, () => el("valAmp").textContent = fmtRad(state.amp));
+bindRange("ctlScale", v => state.scale = v, () => el("valScale").textContent = state.scale.toFixed(2) + "×");
+bindRange("ctlRho", v => state.illumRho = v, () => el("valRho").textContent = state.illumRho.toFixed(0));
+bindRange("ctlRingR", v => state.ringR = v, () => el("valRingR").textContent = state.ringR.toFixed(0));
+bindRange("ctlRingW", v => state.ringW = v, () => el("valRingW").textContent = "±" + (state.ringW/2).toFixed(1));
+bindRange("ctlRingOffX", v => state.ringOffX = v, () => el("valRingOffX").textContent = state.ringOffX.toFixed(0));
+bindRange("ctlRingOffY", v => state.ringOffY = v, () => el("valRingOffY").textContent = state.ringOffY.toFixed(0));
+bindRange("ctlRetard", v => state.retardDeg = v, () => el("valRetard").textContent = fmtDeg(state.retardDeg));
+bindRange("ctlTrans", v => state.transPct = v, () => el("valTrans").textContent = state.transPct.toFixed(0) + "%");
+bindRange("ctlGain", v => state.gain = v, () => el("valGain").textContent = state.gain.toFixed(2) + "×");
+
+el("ctlPreset").addEventListener("change", e => {
+  state.preset = e.target.value;
+  const isGrating = state.preset === "grating";
+  el("scaleLabel").textContent = isGrating ? "Grating frequency" : "Cell size";
+  el("ctlScale").min = isGrating ? "0" : "0.5";
+  el("ctlScale").max = isGrating ? "1" : "1.8";
+  if (isGrating && state.scale > 1) { state.scale = 0.6; el("ctlScale").value = "0.6"; }
+  el("valScale").textContent = isGrating ? "" : state.scale.toFixed(2) + "×";
+  scheduleRecompute();
+});
+
+function syncRingToCondenser(){
+  // The phase ring only does its job where the undiffracted beam actually
+  // converges: a small central disc for on-axis illumination, an annulus
+  // matching the condenser for annular illumination.
+  if (state.illumMode === "point"){
+    state.ringR = 0; state.ringW = 8;
+  } else {
+    state.ringR = state.illumRho; state.ringW = 6;
+  }
+  state.ringOffX = 0; state.ringOffY = 0;
+  el("ctlRingR").value = String(state.ringR);
+  el("ctlRingW").value = String(state.ringW);
+  el("ctlRingOffX").value = "0";
+  el("ctlRingOffY").value = "0";
+  el("valRingR").textContent = state.ringR.toFixed(0);
+  el("valRingW").textContent = "±" + (state.ringW/2).toFixed(1);
+  el("valRingOffX").textContent = "0";
+  el("valRingOffY").textContent = "0";
+}
+
+document.querySelectorAll("#ctlIllumMode button").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll("#ctlIllumMode button").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    state.illumMode = btn.dataset.mode;
+    el("ctlRho").disabled = state.illumMode === "point";
+    syncRingToCondenser();
+    scheduleRecompute();
+  });
+});
+
+el("btnMatch").addEventListener("click", () => {
+  syncRingToCondenser();
+  scheduleRecompute();
+});
+
+/* ---- initial readouts + first render ---- */
+el("valAmp").textContent = fmtRad(state.amp);
+el("valScale").textContent = state.scale.toFixed(2) + "×";
+el("valRho").textContent = state.illumRho.toFixed(0);
+el("valRingR").textContent = state.ringR.toFixed(0);
+el("valRingW").textContent = "±" + (state.ringW/2).toFixed(1);
+el("valRingOffX").textContent = state.ringOffX.toFixed(0);
+el("valRingOffY").textContent = state.ringOffY.toFixed(0);
+el("valRetard").textContent = fmtDeg(state.retardDeg);
+el("valTrans").textContent = state.transPct.toFixed(0) + "%";
+el("valGain").textContent = state.gain.toFixed(2) + "×";
+el("flatNote").classList.add("show");
+
+recompute();
+
+})();
+</script>
