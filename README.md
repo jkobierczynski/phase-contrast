@@ -16,6 +16,10 @@ Double-click `index.html`, or drag it into any modern browser (Chrome, Firefox, 
 
 It works fully offline. The only thing that needs an internet connection is the Archivo / Source Sans 3 / IBM Plex Mono typefaces, loaded from Google Fonts — without a connection the page just falls back to your system's default fonts, and everything else works exactly the same.
 
+## LIVE demo
+
+[Phase Contrast Bench](https://jurgenkobierczynski.com/phase-contrast/index.html)
+
 ## Is it actually computing this?
 
 Yes. There's no server, no pre-rendered images, and no lookup table. The page includes a hand-written radix-2 Cooley–Tukey FFT (about 30 lines of vanilla JavaScript), and every time you move a control it re-runs the real optics calculation on the spot:
